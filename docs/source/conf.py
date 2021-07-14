@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'basic-python'
+project = 'python-toolkit'
 copyright = '2021, John Chen'
 author = 'John Chen'
 
