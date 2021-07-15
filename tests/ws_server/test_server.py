@@ -1,5 +1,6 @@
 ''' Tests for the prototype Piper messagine service '''
 from unittest.mock import Mock, MagicMock
+import random
 import pytest
 
 from ws_server.server import Server
@@ -44,18 +45,19 @@ def test_server_has_start_method(my_server):
 
 
 def test_server_connections_event(my_server):
-    EXPECTED_MESSAGE = '{"type": "connections", "count": 0}'
-    assert my_server.connections_event() == EXPECTED_MESSAGE
+    EXPECTED_MSG = '{"type": "connections", "count": 0}'
+    assert my_server.connections_event() == EXPECTED_MSG
 
 
 def test_server_connections_after_registration(my_server, pipercode_client):
-    EXPECTED_MESSAGE = '{"type": "connections", "count": 1}'
+    EXPECTED_MSG = '{"type": "connections", "count": 1}'
     my_server.register(pipercode_client)
-    assert my_server.connections_event() == EXPECTED_MESSAGE
+    assert my_server.connections_event() == EXPECTED_MSG
 
 
 def test_server_project_event(my_server):
-    assert my_server.project_event() == '{"type": "project"}'
+    EXPECTED_MSG = '{"type": "project", "project_id": null}'
+    assert my_server.project_event() == EXPECTED_MSG
 
 
 def test_mock_client_send(pipercode_client):
@@ -146,10 +148,35 @@ def test_client_unregister(my_server, pipercode_client, storymode_client):
 def test_client_unregister_message(my_server, pipercode_client, storymode_client):
     my_server.register(pipercode_client)
     my_server.register(storymode_client)
-    EXPECTED_MESSAGE = '{"type": "connections", "count": 2}'
-    assert pipercode_client.last_message == EXPECTED_MESSAGE
+    EXPECTED_MSG = '{"type": "connections", "count": 2}'
+    assert pipercode_client.last_message == EXPECTED_MSG
     my_server.unregister(storymode_client)
-    EXPECTED_MESSAGE = '{"type": "connections", "count": 1}'
-    assert pipercode_client.last_message == EXPECTED_MESSAGE
+    EXPECTED_MSG = '{"type": "connections", "count": 1}'
+    assert pipercode_client.last_message == EXPECTED_MSG
     my_server.unregister(pipercode_client)
     assert len(my_server.connections) == 0
+    # N messages expected:
+    # 1: PiperCode registered
+    # 2: StoryMode registered
+    # 3: StoryMode unregistered
+    assert pipercode_client.message_count == 3
+
+
+def test_can_set_project_id(my_server):
+    project_id_1, project_id_2 = random.randint(0, 20), random.randint(0, 20)
+    my_server.request_project(project_id_1)
+    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_1)+'}'
+    assert my_server.project_event() == EXPECTED_MSG
+    my_server.request_project(project_id_2)
+    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_2)+'}'
+    assert my_server.project_event() == EXPECTED_MSG
+
+
+def test_project_request(my_server, pipercode_client, storymode_client):
+    PROJECT_ID = random.randint(0, 20)
+    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(PROJECT_ID)+'}'
+    my_server.register(pipercode_client)
+    my_server.register(storymode_client)
+    my_server.request_project(PROJECT_ID)
+    assert pipercode_client.message_count == 3
+    assert pipercode_client.last_message == EXPECTED_MSG
