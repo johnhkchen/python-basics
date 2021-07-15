@@ -3,15 +3,17 @@ from unittest.mock import Mock, MagicMock
 import random
 import pytest
 import asyncio
+import nest_asyncio
+
+nest_asyncio.apply()
 
 from ws_server.server import Server
 
 
 @pytest.fixture
-def my_server(event_loop):
+def my_server():
     my_server = Server()
-    # my_server.start(event_loop)
-    return my_server
+    yield my_server
 
 
 @pytest.fixture
@@ -43,75 +45,70 @@ def storymode_client(mock_client):
     return mock_client.get()
 
 
-@pytest.mark.skip(reason="Not implemented")
-def test_server_has_start_method(my_server):
-    my_server.start()
-
-
 def test_server_connections_event(my_server):
-    EXPECTED_MSG = '{"type": "connections", "count": 0}'
+    expected_msg = '{"type": "connections", "count": 0}'
     return_msg = my_server.connections_event()
-    assert return_msg == EXPECTED_MSG
+    assert return_msg == expected_msg
 
 
 @pytest.mark.asyncio
 async def test_server_connections_after_registration(my_server, pipercode_client):
-    EXPECTED_MSG = '{"type": "connections", "count": 1}'
+    expected_msg = '{"type": "connections", "count": 1}'
     await my_server.register(pipercode_client)
-    assert my_server.connections_event() == EXPECTED_MSG
+    assert my_server.connections_event() == expected_msg
 
 
 def test_server_project_event(my_server):
-    EXPECTED_MSG = '{"type": "project", "project_id": null}'
-    assert my_server.project_event() == EXPECTED_MSG
+    expected_msg = '{"type": "project", "project_id": null}'
+    assert my_server.project_event() == expected_msg
 
 
 def test_mock_client_send(pipercode_client):
-    SAMPLE_USER_MESSAGE = '{"type": "user"}'
-    SAMPLE_PROJECT_MESSAGE = '{"type": "project"}'
+    user_message = '{"type": "user"}'
+    project_message = '{"type": "project"}'
 
     assert pipercode_client.message_count == 0
     assert pipercode_client.last_message is None
 
-    pipercode_client.send(SAMPLE_USER_MESSAGE)
+    pipercode_client.send(user_message)
     assert pipercode_client.message_count == 1
-    assert pipercode_client.last_message == SAMPLE_USER_MESSAGE
+    assert pipercode_client.last_message == user_message
 
-    pipercode_client.send(SAMPLE_PROJECT_MESSAGE)
+    pipercode_client.send(project_message)
     assert pipercode_client.message_count == 2
-    assert pipercode_client.last_message == SAMPLE_PROJECT_MESSAGE
+    assert pipercode_client.last_message == project_message
 
 
 def test_mock_client_independence(pipercode_client, storymode_client):
     """Should be able to have multiple clients receive different messages"""
-    SAMPLE_USER_MESSAGE = '{"type": "user"}'
-    SAMPLE_PROJECT_MESSAGE = '{"type": "project"}'
+    user_message = '{"type": "user"}'
+    project_message = '{"type": "project"}'
 
     assert pipercode_client.message_count is 0
     assert pipercode_client.last_message is None
     assert storymode_client.message_count is 0
     assert storymode_client.last_message is None
 
-    pipercode_client.send(SAMPLE_USER_MESSAGE)
+    pipercode_client.send(user_message)
 
     assert pipercode_client.message_count is 1
-    assert pipercode_client.last_message is SAMPLE_USER_MESSAGE
+    assert pipercode_client.last_message is user_message
     assert storymode_client.message_count is 0
     assert storymode_client.last_message is None
 
-    storymode_client.send(SAMPLE_USER_MESSAGE)
+    storymode_client.send(user_message)
 
     assert pipercode_client.message_count is 1
-    assert pipercode_client.last_message is SAMPLE_USER_MESSAGE
+    assert pipercode_client.last_message is user_message
     assert storymode_client.message_count is 1
-    assert storymode_client.last_message is SAMPLE_USER_MESSAGE
+    assert storymode_client.last_message is user_message
 
-    storymode_client.send(SAMPLE_PROJECT_MESSAGE)
+    storymode_client.send(project_message)
 
     assert pipercode_client.message_count is 1
-    assert pipercode_client.last_message is SAMPLE_USER_MESSAGE
+    assert pipercode_client.last_message is user_message
     assert storymode_client.message_count is 2
-    assert storymode_client.last_message is SAMPLE_PROJECT_MESSAGE
+    assert storymode_client.last_message is project_message
 
 
 @pytest.mark.asyncio
@@ -162,11 +159,11 @@ async def test_client_unregister(my_server, pipercode_client, storymode_client):
 async def test_client_unregister_message(my_server, pipercode_client, storymode_client):
     await my_server.register(pipercode_client)
     await my_server.register(storymode_client)
-    EXPECTED_MSG = '{"type": "connections", "count": 2}'
-    assert pipercode_client.last_message == EXPECTED_MSG
+    expected_msg = '{"type": "connections", "count": 2}'
+    assert pipercode_client.last_message == expected_msg
     await my_server.unregister(storymode_client)
-    EXPECTED_MSG = '{"type": "connections", "count": 1}'
-    assert pipercode_client.last_message == EXPECTED_MSG
+    expected_msg = '{"type": "connections", "count": 1}'
+    assert pipercode_client.last_message == expected_msg
     await my_server.unregister(pipercode_client)
     assert len(my_server.connections) == 0
     # N messages expected:
@@ -178,21 +175,43 @@ async def test_client_unregister_message(my_server, pipercode_client, storymode_
 
 @pytest.mark.asyncio
 async def test_can_set_project_id(my_server):
-    PROJECT_ID_1, PROJECT_ID_2 = random.randint(0, 20), random.randint(0, 20)
+    project_id_1, project_id_2 = random.randint(0, 20), random.randint(0, 20)
+    expected_msg = '{"type": "project", "project_id": ' + str(project_id_1) + "}"
     await my_server.request_project(project_id_1)
-    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID_1))
-    assert my_server.project_event() == EXPECTED_MSG
+    assert my_server.project_event() == expected_msg
+
+
+@pytest.mark.asyncio
+async def test_can_change_project_id(my_server):
+    project_id_1, project_id_2 = random.randint(0, 20), random.randint(0, 20)
+    expected_msg = '{"type": "project", "project_id": ' + str(project_id_2) + "}"
+
+    await my_server.request_project(project_id_1)
     await my_server.request_project(project_id_2)
-    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID_2))
-    assert my_server.project_event() == EXPECTED_MSG
+    assert my_server.project_event() == expected_msg
 
 
 @pytest.mark.asyncio
 async def test_project_request(my_server, pipercode_client, storymode_client):
-    PROJECT_ID = random.randint(0, 20)
-    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID))
+    project_id = random.randint(0, 20)
+    expected_msg = '{"type": "project", "project_id": ' + str(project_id) + "}"
+
     await my_server.register(pipercode_client)
     await my_server.register(storymode_client)
-    await my_server.request_project(PROJECT_ID)
-    assert pipercode_client.message_count == 3
-    assert pipercode_client.last_message == EXPECTED_MSG
+    await my_server.request_project(project_id)
+    assert (
+        pipercode_client.message_count == 3
+        and pipercode_client.last_message == expected_msg
+    )
+
+
+@pytest.mark.asyncio
+async def test_start_server(my_server):
+    coroutine = my_server.get_server_coroutine()
+    asyncio.run(coroutine)
+
+
+@pytest.mark.asyncio
+async def test_start_server(my_server):
+    coroutine = my_server.get_server_coroutine()
+    asyncio.run(coroutine)

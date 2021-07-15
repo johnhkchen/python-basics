@@ -49,8 +49,5 @@ class Server:
         finally:
             await self.unregister(websocket)
 
-    def start(self, event_loop):
-        server_coroutine = websockets.serve(
-            self.project_request_service, "localhost", 6789
-        )
-        event_loop.run_until_complete(server_coroutine)
+    def get_server_coroutine(self):
+        return websockets.serve(self.project_request_service, "localhost", 6789)
