@@ -213,5 +213,4 @@ async def test_start_server(my_server):
 
 @pytest.mark.asyncio
 async def test_start_server(my_server):
-    coroutine = my_server.get_server_coroutine()
-    asyncio.run(coroutine)
+    asyncio.run(my_server.get_service())
