@@ -2,13 +2,16 @@
 from unittest.mock import Mock, MagicMock
 import random
 import pytest
+import asyncio
 
 from ws_server.server import Server
 
 
 @pytest.fixture
-def my_server():
-    return Server()
+def my_server(event_loop):
+    my_server = Server()
+    # my_server.start(event_loop)
+    return my_server
 
 
 @pytest.fixture
@@ -46,12 +49,14 @@ def test_server_has_start_method(my_server):
 
 def test_server_connections_event(my_server):
     EXPECTED_MSG = '{"type": "connections", "count": 0}'
-    assert my_server.connections_event() == EXPECTED_MSG
+    return_msg = my_server.connections_event()
+    assert return_msg == EXPECTED_MSG
 
 
-def test_server_connections_after_registration(my_server, pipercode_client):
+@pytest.mark.asyncio
+async def test_server_connections_after_registration(my_server, pipercode_client):
     EXPECTED_MSG = '{"type": "connections", "count": 1}'
-    my_server.register(pipercode_client)
+    await my_server.register(pipercode_client)
     assert my_server.connections_event() == EXPECTED_MSG
 
 
@@ -108,52 +113,58 @@ def test_mock_client_independence(pipercode_client, storymode_client):
     assert storymode_client.last_message is SAMPLE_PROJECT_MESSAGE
 
 
-def test_server_client_registration(my_server, pipercode_client):
+@pytest.mark.asyncio
+async def test_server_client_registration(my_server, pipercode_client):
     ''' Server should be able to register a new client '''
-    my_server.register(pipercode_client)
+    await my_server.register(pipercode_client)
     assert pipercode_client in my_server.connections
 
 
-def test_client_registration_confirmation(my_server, pipercode_client):
+@pytest.mark.asyncio
+async def test_client_registration_confirmation(my_server, pipercode_client):
     ''' Client should get a message confirming new user'''
-    my_server.register(pipercode_client)
+    await my_server.register(pipercode_client)
     assert pipercode_client.message_count > 0
 
 
-def test_multi_client_regitration(my_server, pipercode_client, storymode_client):
-    my_server.register(pipercode_client)
+@pytest.mark.asyncio
+async def test_multi_client_regitration(my_server, pipercode_client, storymode_client):
+    await my_server.register(pipercode_client)
     assert pipercode_client.message_count is 1
-    my_server.register(storymode_client)
+    await my_server.register(storymode_client)
     assert storymode_client.message_count is 1
 
 
-def test_clients_receive_connections_update(my_server, pipercode_client, storymode_client):
-    my_server.register(pipercode_client)
-    my_server.register(storymode_client)
+@pytest.mark.asyncio
+async def test_clients_receive_connections_update(my_server, pipercode_client, storymode_client):
+    await my_server.register(pipercode_client)
+    await my_server.register(storymode_client)
     assert pipercode_client.message_count is 2
     assert storymode_client.message_count is 1
 
 
-def test_client_unregister(my_server, pipercode_client, storymode_client):
-    my_server.register(pipercode_client)
+@pytest.mark.asyncio
+async def test_client_unregister(my_server, pipercode_client, storymode_client):
+    await my_server.register(pipercode_client)
     assert len(my_server.connections) == 1
-    my_server.register(storymode_client)
+    await my_server.register(storymode_client)
     assert len(my_server.connections) == 2
-    my_server.unregister(storymode_client)
+    await my_server.unregister(storymode_client)
     assert len(my_server.connections) == 1
-    my_server.unregister(pipercode_client)
+    await my_server.unregister(pipercode_client)
     assert len(my_server.connections) == 0
 
 
-def test_client_unregister_message(my_server, pipercode_client, storymode_client):
-    my_server.register(pipercode_client)
-    my_server.register(storymode_client)
+@pytest.mark.asyncio
+async def test_client_unregister_message(my_server, pipercode_client, storymode_client):
+    await my_server.register(pipercode_client)
+    await my_server.register(storymode_client)
     EXPECTED_MSG = '{"type": "connections", "count": 2}'
     assert pipercode_client.last_message == EXPECTED_MSG
-    my_server.unregister(storymode_client)
+    await my_server.unregister(storymode_client)
     EXPECTED_MSG = '{"type": "connections", "count": 1}'
     assert pipercode_client.last_message == EXPECTED_MSG
-    my_server.unregister(pipercode_client)
+    await my_server.unregister(pipercode_client)
     assert len(my_server.connections) == 0
     # N messages expected:
     # 1: PiperCode registered
@@ -162,21 +173,23 @@ def test_client_unregister_message(my_server, pipercode_client, storymode_client
     assert pipercode_client.message_count == 3
 
 
-def test_can_set_project_id(my_server):
+@pytest.mark.asyncio
+async def test_can_set_project_id(my_server):
     project_id_1, project_id_2 = random.randint(0, 20), random.randint(0, 20)
-    my_server.request_project(project_id_1)
+    await my_server.request_project(project_id_1)
     EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_1)+'}'
     assert my_server.project_event() == EXPECTED_MSG
-    my_server.request_project(project_id_2)
+    await my_server.request_project(project_id_2)
     EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_2)+'}'
     assert my_server.project_event() == EXPECTED_MSG
 
 
-def test_project_request(my_server, pipercode_client, storymode_client):
+@pytest.mark.asyncio
+async def test_project_request(my_server, pipercode_client, storymode_client):
     PROJECT_ID = random.randint(0, 20)
     EXPECTED_MSG = '{"type": "project", "project_id": ' + str(PROJECT_ID)+'}'
-    my_server.register(pipercode_client)
-    my_server.register(storymode_client)
-    my_server.request_project(PROJECT_ID)
+    await my_server.register(pipercode_client)
+    await my_server.register(storymode_client)
+    await my_server.request_project(PROJECT_ID)
     assert pipercode_client.message_count == 3
     assert pipercode_client.last_message == EXPECTED_MSG

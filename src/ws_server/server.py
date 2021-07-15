@@ -3,10 +3,11 @@
 import asyncio
 import json
 import websockets
+import logging
 
 
 class Server():
-    version = '0.2.0'
+    version = '0.3.0'
 
     def __init__(self):
         self.connections = set()
@@ -18,27 +19,37 @@ class Server():
     def project_event(self):
         return json.dumps({"type": "project", "project_id": self.project_id})
 
-    def notify_connections(self):
+    async def notify_connections(self):
         if self.connections:
             for client in self.connections:
                 client.send(self.connections_event())
 
-    def notify_project(self):
+    async def notify_project(self):
         if self.project_id:
             for client in self.connections:
                 client.send(self.project_event())
 
-    def register(self, client):
+    async def register(self, client):
         self.connections.add(client)
-        self.notify_connections()
+        await self.notify_connections()
 
-    def unregister(self, client):
+    async def unregister(self, client):
         self.connections.remove(client)
-        self.notify_connections()
+        await self.notify_connections()
 
-    def request_project(self, project_id):
+    async def request_project(self, project_id):
         self.project_id = project_id
-        self.notify_project()
+        await self.notify_project()
 
-    def start(self):
-        raise NotImplementedError
+    async def project_request_service(self, websocket, path):
+        # This is the main server process
+        await self.register(websocket)
+        try:
+            logging.error("What am I supposed to do?!")
+        finally:
+            await self.unregister(websocket)
+
+    def start(self, event_loop):
+        server_coroutine = websockets.serve(
+            self.project_request_service, "localhost", 6789)
+        event_loop.run_until_complete(server_coroutine)
