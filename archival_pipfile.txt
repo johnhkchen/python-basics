@@ -9,6 +9,7 @@ python-docs-theme = "*"
 pytest = "*"
 autopep8 = "*"
 tox = "*"
+twine = "*"
 
 [dev-packages]
 
