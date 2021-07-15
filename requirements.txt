@@ -38,4 +38,5 @@ twine==3.4.1
 urllib3==1.26.6
 virtualenv==20.6.0
 webencodings==0.5.1
+websockets==9.1
 zipp==3.5.0
