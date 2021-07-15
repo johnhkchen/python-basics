@@ -1,4 +1,4 @@
-''' Tests for the prototype Piper messagine service '''
+""" Tests for the prototype Piper messagine service """
 from unittest.mock import Mock, MagicMock
 import random
 import pytest
@@ -16,7 +16,7 @@ def my_server(event_loop):
 
 @pytest.fixture
 def mock_client():
-    class MockClientFactory():
+    class MockClientFactory:
         def get(self):
             mock_client = Mock()
             mock_client.message_count = 0
@@ -25,6 +25,7 @@ def mock_client():
             def record_message(message):
                 mock_client.message_count += 1
                 mock_client.last_message = message
+
             mock_client.send = MagicMock(side_effect=record_message)
 
             return mock_client
@@ -82,7 +83,7 @@ def test_mock_client_send(pipercode_client):
 
 
 def test_mock_client_independence(pipercode_client, storymode_client):
-    ''' Should be able to have multiple clients receive different messages '''
+    """Should be able to have multiple clients receive different messages"""
     SAMPLE_USER_MESSAGE = '{"type": "user"}'
     SAMPLE_PROJECT_MESSAGE = '{"type": "project"}'
 
@@ -115,14 +116,14 @@ def test_mock_client_independence(pipercode_client, storymode_client):
 
 @pytest.mark.asyncio
 async def test_server_client_registration(my_server, pipercode_client):
-    ''' Server should be able to register a new client '''
+    """Server should be able to register a new client"""
     await my_server.register(pipercode_client)
     assert pipercode_client in my_server.connections
 
 
 @pytest.mark.asyncio
 async def test_client_registration_confirmation(my_server, pipercode_client):
-    ''' Client should get a message confirming new user'''
+    """Client should get a message confirming new user"""
     await my_server.register(pipercode_client)
     assert pipercode_client.message_count > 0
 
@@ -136,7 +137,9 @@ async def test_multi_client_regitration(my_server, pipercode_client, storymode_c
 
 
 @pytest.mark.asyncio
-async def test_clients_receive_connections_update(my_server, pipercode_client, storymode_client):
+async def test_clients_receive_connections_update(
+    my_server, pipercode_client, storymode_client
+):
     await my_server.register(pipercode_client)
     await my_server.register(storymode_client)
     assert pipercode_client.message_count is 2
@@ -175,19 +178,19 @@ async def test_client_unregister_message(my_server, pipercode_client, storymode_
 
 @pytest.mark.asyncio
 async def test_can_set_project_id(my_server):
-    project_id_1, project_id_2 = random.randint(0, 20), random.randint(0, 20)
+    PROJECT_ID_1, PROJECT_ID_2 = random.randint(0, 20), random.randint(0, 20)
     await my_server.request_project(project_id_1)
-    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_1)+'}'
+    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID_1))
     assert my_server.project_event() == EXPECTED_MSG
     await my_server.request_project(project_id_2)
-    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(project_id_2)+'}'
+    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID_2))
     assert my_server.project_event() == EXPECTED_MSG
 
 
 @pytest.mark.asyncio
 async def test_project_request(my_server, pipercode_client, storymode_client):
     PROJECT_ID = random.randint(0, 20)
-    EXPECTED_MSG = '{"type": "project", "project_id": ' + str(PROJECT_ID)+'}'
+    EXPECTED_MSG = '{"type": "project", "project_id": {}'.format(str(PROJECT_ID))
     await my_server.register(pipercode_client)
     await my_server.register(storymode_client)
     await my_server.request_project(PROJECT_ID)

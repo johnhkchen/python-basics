@@ -1,4 +1,4 @@
-''' Websocket Message Passing Server '''
+""" Websocket Message Passing Server """
 
 import asyncio
 import json
@@ -6,8 +6,8 @@ import websockets
 import logging
 
 
-class Server():
-    version = '0.3.0'
+class Server:
+    version = "0.3.0"
 
     def __init__(self):
         self.connections = set()
@@ -51,5 +51,6 @@ class Server():
 
     def start(self, event_loop):
         server_coroutine = websockets.serve(
-            self.project_request_service, "localhost", 6789)
+            self.project_request_service, "localhost", 6789
+        )
         event_loop.run_until_complete(server_coroutine)
