@@ -8,6 +8,7 @@ sphinx = "*"
 python-docs-theme = "*"
 pytest = "*"
 autopep8 = "*"
+tox = "*"
 
 [dev-packages]
 
