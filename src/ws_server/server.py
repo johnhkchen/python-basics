@@ -1,9 +1,7 @@
 """ Websocket Message Passing Server """
 
-import asyncio
 import json
 import websockets
-import logging
 
 
 class Server:
@@ -45,7 +43,7 @@ class Server:
         # This is the main server process
         await self.register(websocket)
         try:
-            logging.error("What am I supposed to do?!")
+            pass
         finally:
             await self.unregister(websocket)
 

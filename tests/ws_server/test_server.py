@@ -1,8 +1,10 @@
 """ Tests for the prototype Piper messagine service """
-from unittest.mock import Mock, MagicMock
+
 import random
 import pytest
 import asyncio
+from unittest.mock import Mock, MagicMock
+
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -32,17 +34,17 @@ def mock_client():
 
             return mock_client
 
-    return MockClientFactory()
+    yield MockClientFactory()
 
 
 @pytest.fixture
 def pipercode_client(mock_client):
-    return mock_client.get()
+    yield mock_client.get()
 
 
 @pytest.fixture
 def storymode_client(mock_client):
-    return mock_client.get()
+    yield mock_client.get()
 
 
 def test_server_connections_event(my_server):
@@ -197,8 +199,11 @@ async def test_project_request(my_server, pipercode_client, storymode_client):
     expected_msg = '{"type": "project", "project_id": ' + str(project_id) + "}"
 
     await my_server.register(pipercode_client)
+    await asyncio.sleep(0.05)  # Resolve race conditions
     await my_server.register(storymode_client)
+    await asyncio.sleep(0.05)  # Resolve race conditions
     await my_server.request_project(project_id)
+    await asyncio.sleep(0.3)  # Resolve race conditions
     assert (
         pipercode_client.message_count == 3
         and pipercode_client.last_message == expected_msg
