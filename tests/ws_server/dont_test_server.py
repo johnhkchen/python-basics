@@ -203,7 +203,7 @@ async def test_project_request(my_server, pipercode_client, storymode_client):
     await my_server.register(storymode_client)
     await asyncio.sleep(0.05)  # Resolve race conditions
     await my_server.request_project(project_id)
-    await asyncio.sleep(0.3)  # Resolve race conditions
+    await asyncio.sleep(0.2)  # Resolve race conditions
     assert (
         pipercode_client.message_count == 3
         and pipercode_client.last_message == expected_msg
@@ -212,10 +212,19 @@ async def test_project_request(my_server, pipercode_client, storymode_client):
 
 @pytest.mark.asyncio
 async def test_start_server(my_server):
-    coroutine = my_server.get_server_coroutine()
-    asyncio.run(coroutine)
+    server = await my_server.start_server()
+    assert server is not None
 
 
 @pytest.mark.asyncio
-async def test_start_server(my_server):
-    asyncio.run(my_server.get_service())
+async def test_start_server_port(my_server):
+    port = random.randint(1, 30000)
+    server = await my_server.start_server(port)
+    assert server is not None
+
+
+@pytest.mark.asyncio
+async def test_start_server_port(my_server):
+    port = random.randint(1, 30000)
+    server = await my_server.start_server(port)
+    assert server is not None
